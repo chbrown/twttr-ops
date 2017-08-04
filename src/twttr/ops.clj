@@ -82,8 +82,8 @@
                          (api/statuses-user-timeline credentials :params)
                          seq)]
       (concat page (user-timeline credentials screen-name
-                                       :after-id after-id
-                                       :before-id (apply min before-id (map :id page)))))))
+                                  :after-id after-id
+                                  :before-id (apply min before-id (map :id page)))))))
 
 (defn fill-user-timeline
   "Retrieve as many tweets as possible that have been published by screen-name
@@ -146,6 +146,6 @@
           earliest-id (apply min Long/MAX_VALUE (map :id statuses))
           ; set max_id to proceed
           next-params (assoc params :max_id (dec earliest-id))]
-      (concat statuses
-        (when (contains? search_metadata :next_results) ; (seq statuses)
-          (search credentials next-params))))))
+      (concat (map extended->classic statuses)
+              (when (contains? search_metadata :next_results) ; (seq statuses)
+                (search credentials next-params))))))

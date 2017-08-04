@@ -39,5 +39,5 @@
           ; to-input-stream can't handle Character instances, so we repeat a string
           lines (mapcat vector strings (repeat "\n"))]
       (with-open [^java.io.InputStream input-stream (cond-> (bs/to-input-stream lines)
-                                 (gzipped? output) (bt/compress :gzip))]
+                                                      (gzipped? output) (bt/compress :gzip))]
         (bs/transfer input-stream output)))))
