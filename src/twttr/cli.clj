@@ -107,12 +107,38 @@
        (map #(fill-user-timeline-from-file % with-replied-to))
        (dorun)))
 
+(defn fill-statuses-command
+  "Read status IDs from *in*, fetch the fully-hydrated statuses, and write to *out*."
+  [_ _]
+  (->> (io/reader *in*)
+       (line-seq)
+       (ops/statuses-lookup (auth/env->UserCredentials))
+       (map #(json/write-str % :escape-unicode false))
+       (run! println)))
+
+(defn append-replied-to-command
+  "Read statuses from each path, fetch the replied_to statuses (recursively) and write back to the same file."
+  [paths _]
+  (doseq [path paths
+          :let [file (io/file path)]]
+    (let [stored-statuses (twttr.io/read-json-lines file)]
+      (log/info "Read" (count stored-statuses) "stored statuses from" path)
+      (let [all-statuses (ops/concat-replied-to-statuses (auth/env->UserCredentials) stored-statuses)]
+        (log/info "Found" (- (count all-statuses) (count stored-statuses)) "new statuses for" path)
+        (twttr.io/write-json-lines file all-statuses)))))
+
 (defn reply-tree-command
   "Read statuses from *in* and print out in a tree format"
   [_ {:keys [screen-name]}]
   (let [statuses (twttr.io/read-json-lines *in*)]
     ; (log/info "read" (count statuses) "statuses with" (count (get replies nil)) "root statuses")
     (run! println (pprint/format-reply-tree statuses))))
+
+(defn verify-command
+  "Run account/verify_credentials on the user credentials specified by the default environment variables"
+  [_ _]
+  (let [result (api/account-verify-credentials (auth/env->UserCredentials))]
+    (println (json/write-str result :escape-unicode false))))
 
 ;; CLI integration
 
@@ -136,9 +162,12 @@
                       [nil "--with-replied-to"]
                       ["-h" "--help"]
                       ["-v" "--version"]]
-        commands {"fill-users-timelines" #'fill-users-timelines-command
+        commands {"append-replied-to"    #'append-replied-to-command
+                  "fill-statuses"        #'fill-statuses-command
+                  "fill-users-timelines" #'fill-users-timelines-command
                   "reply-tree"           #'reply-tree-command
-                  "stream"               #'stream-command}
+                  "stream"               #'stream-command
+                  "verify"               #'verify-command}
         {:keys [options arguments summary errors] :as opts} (parse-opts argv option-specs)
         [command & args] arguments
         command-fn (get commands command)]
