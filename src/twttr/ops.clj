@@ -3,6 +3,26 @@
   (:require [clojure.string :as str]
             [twttr.api :as api]))
 
+(defn- rename-key
+  "Returns `m` with the key `old` (if it exists) renamed to `new`;
+  like clojure.set/rename-keys but simpler."
+  [m old new]
+  (if (contains? m old)
+    (-> m
+        (assoc new (get m old))
+        (dissoc old))
+    m))
+
+(defn extended->classic
+  "Twitter API returns a somewhat different structure for statuses retrieved
+  with tweet_mode=extended; see https://dev.twitter.com/overview/api/upcoming-changes-to-tweets
+  The extended structure also includes a :display_text_range key with an
+  integer tuple value, but we'll leave it."
+  [status]
+  (cond-> (rename-key status :full_text :text)
+    (contains? status :quoted_status)    (update :quoted_status extended->classic)
+    (contains? status :retweeted_status) (update :retweeted_status extended->classic)))
+
 (defn- create-status-placeholder
   "Create a status placeholder, with only :id and :id_str fields, indicating
   a status that has been deleted or perhaps never existed"
@@ -15,10 +35,13 @@
   [credentials ids]
   ; statuses/lookup.json?map=true&id=8100465728375,1 returns JSON like:
   ; {"id":{"8100465728375":{"created_at":<...>},"1":null}}
-  (let [params {:id (str/join "," ids) :map true}
+  (let [params {:id (str/join "," ids) :map true :tweet_mode "extended"}
         statuses-lookup-map (:id (api/statuses-lookup credentials :params params))]
     (for [[id status] statuses-lookup-map]
-      (merge (create-status-placeholder (name id)) status))))
+      ; since we used map=true, `status` will be nil if the status doesn't exist
+      (if (some? status)
+        (extended->classic status)
+        (create-status-placeholder (name id))))))
 
 (defn statuses-lookup
   "Serially lookup all statuses indicated by ids (a sequence of numbers or strings),
@@ -78,8 +101,10 @@
                           :since_id after-id
                           :max_id (dec before-id)
                           :count 200
-                          :include_rts 1}
+                          :include_rts 1
+                          :tweet_mode "extended"}
                          (api/statuses-user-timeline credentials :params)
+                         (map extended->classic)
                          seq)]
       (concat page (user-timeline credentials screen-name
                                   :after-id after-id
@@ -139,7 +164,8 @@
   (lazy-seq
     (let [params (assoc params :include_entities 1
                                :result_type "recent"
-                               :count 100)
+                               :count 100
+                               :tweet_mode "extended")
           {:keys [statuses search_metadata]} (api/search-tweets credentials :params params)
           ; (:next_results search_metadata) provides the next fully serialized query string,
           ; but then we have to parse it to merge it back in :(
