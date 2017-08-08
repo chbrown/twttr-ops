@@ -157,6 +157,11 @@
   [credentials params]
   (users-lookup credentials {:user-ids (friends credentials params)}))
 
+(defn- next-max-id
+  "Find the smallest (=earliest) id in `statuses` and return the id that's one smaller."
+  [statuses]
+  (dec (apply min Long/MAX_VALUE (map :id statuses))))
+
 (defn search
   "call like (ops/search {:q \"to:NPR\"})
   See https://dev.twitter.com/rest/public/search for the q param syntax"
@@ -169,9 +174,8 @@
           {:keys [statuses search_metadata]} (api/search-tweets credentials :params params)
           ; (:next_results search_metadata) provides the next fully serialized query string,
           ; but then we have to parse it to merge it back in :(
-          earliest-id (apply min Long/MAX_VALUE (map :id statuses))
           ; set max_id to proceed
-          next-params (assoc params :max_id (dec earliest-id))]
+          next-params (assoc params :max_id (next-max-id statuses))]
       (concat (map extended->classic statuses)
               (when (contains? search_metadata :next_results) ; (seq statuses)
                 (search credentials next-params))))))
