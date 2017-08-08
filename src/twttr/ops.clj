@@ -179,3 +179,16 @@
       (concat (map extended->classic statuses)
               (when (contains? search_metadata :next_results) ; (seq statuses)
                 (search credentials next-params))))))
+
+(defn favorites-list
+  "Iterate through all (up to around 3200) favorites (=likes) as statuses
+  for the specified user"
+  [credentials params]
+  {:pre [(or (contains? params :user_id)
+             (contains? params :screen_name))]}
+  (lazy-seq
+    (when-let [page (->> (assoc params :count 200 :tweet_mode "extended")
+                         (api/favorites-list credentials :params)
+                         (map extended->classic)
+                         (seq))]
+      (concat page (favorites-list credentials (assoc params :max_id (next-max-id page)))))))
