@@ -102,10 +102,11 @@
   "Read any existing statuses from *in*, then retrieve as many as possible since then,
   get any missing tweets that were replied to, and write to *out*."
   [paths {:keys [with-replied-to]}]
-  (->> paths
-       (map io/file)
-       (map #(fill-user-timeline-from-file % with-replied-to))
-       (dorun)))
+  (doseq [path paths]
+    (try
+      (fill-user-timeline-from-file (io/file path) with-replied-to)
+      (catch Exception e
+        (log/info "Failed to fill user timeline from path:" path)))))
 
 (defn fill-statuses-command
   "Read status IDs from *in*, fetch the fully-hydrated statuses, and write to *out*."
