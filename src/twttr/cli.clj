@@ -88,15 +88,17 @@
 (defn stream-command
   [[path & _] params]
   (log/info "streaming from" path "with params" params)
-  (->> {:prefix "https://stream.twitter.com/1.1"
-        ; :method :post
-        :params params}
-       (api/request path (auth/env->UserCredentials))
-       (:body)
-       (bs/to-line-seq)
-       (remove empty?)
-       (interpose (str \newline))
-       (run! #(.write *out* ^String %))))
+  (let [url (str "https://stream.twitter.com/1.1/" path)
+        options {:request-method :get
+                 ; :headers {:User-Agent "twttr"}
+                 :params params}
+        response (api/request url (auth/env->UserCredentials) options)]
+    ; (log/info "started stream" response)
+    (->> (:body response)
+         (bs/to-line-seq)
+         (remove empty?)
+         (interpose "\n")
+         (run! #(.write *out* ^String %)))))
 
 (defn fill-users-timelines-command
   "Read any existing statuses from *in*, then retrieve as many as possible since then,
