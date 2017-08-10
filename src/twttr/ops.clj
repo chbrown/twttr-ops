@@ -90,6 +90,16 @@
          ; each item is a map like {:screen-names ["TwitterEng"]} or {:user-ids [145]}
          (mapcat #(users-lookup-page credentials (apply merge-with concat %))))))
 
+(defn screen-names->user-ids
+  "Fetch the Twitter user IDs corresponding to screen-names, retaining order,
+  with nils as placeholders for any screen names that can't be resolved.
+  Not lazy, since there's no such thing as a lazy-hash-map."
+  [credentials screen-names]
+  (let [users (users-lookup credentials {:screen-names screen-names})
+        pairs (map (juxt (comp str/lower-case :screen_name) :id_str) users)
+        mapping (into {} pairs)]
+    (map #(get mapping (str/lower-case %)) screen-names)))
+
 (defn user-timeline
   "Get the most recent tweets that came after after-id, but before before-id,
   exclusive, from most recent to longer ago (which is the only supported ordering)"
