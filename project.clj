@@ -26,4 +26,5 @@
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/tools.namespace "0.3.0-alpha3"]
                                   [org.clojure/tools.trace "0.7.9"]]
-                   :source-paths ["dev"]}})
+                   :source-paths ["dev"]
+                   :repl-options {:init-ns user}}})
