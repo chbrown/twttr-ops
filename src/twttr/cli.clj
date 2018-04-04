@@ -11,6 +11,7 @@
             [twttr.ops :as ops]
             [twttr.io]
             [twttr.pprint :as pprint]
+            [fancy.string :refer [pad-end]]
             [clojure.tools.cli :refer [parse-opts]])
   (:gen-class))
 
@@ -145,12 +146,33 @@
 
 ;; CLI integration
 
+(def cli-commands
+  {"append-replied-to"      #'append-replied-to-command
+   "fill-statuses"          #'fill-statuses-command
+   "fill-users-timelines"   #'fill-users-timelines-command
+   "reply-tree"             #'reply-tree-command
+   "stream"                 #'stream-command
+   "verify"                 #'verify-command})
+
+(def cli-option-specs
+  [[nil "--track TRACK"                   "Tracking search term"]
+   [nil "--follow USER_IDS"               "Comma-separated user IDs to stream updates for"]
+   [nil "--screen-name SCREEN_NAME"       "Screen name of user timeline provided on *in*"]
+   [nil "--with-replied-to"]
+   ["-h" "--help"]
+   ["-v" "--version"]])
+
 (defn- exit! [code] (System/exit code))
 
 (defn- cli-error!
   [summary & messages]
-  (println "twttr/ops: cli")
-  (println)
+  (println "twttr/ops: cli (command line interface)")
+  (println "\nCommands:")
+  (let [command-width (apply max (map count (keys cli-commands)))]
+    (doseq [[command command-fn] cli-commands]
+      (println " " (pad-end command command-width)
+               " " (-> command-fn meta :doc (str/replace #"\s+" " ")))))
+  (println "\nOptions:")
   (println summary)
   (println)
   (doseq [message messages]
@@ -159,21 +181,9 @@
 
 (defn -main
   [& argv]
-  (let [option-specs [[nil "--track TRACK" "Tracking search term"]
-                      [nil "--follow USER-IDS" "Comma-separated user IDs to stream updates for"]
-                      [nil "--screen-name SCREEN_NAME" "Screen name of user timeline provided on STDIN"]
-                      [nil "--with-replied-to"]
-                      ["-h" "--help"]
-                      ["-v" "--version"]]
-        commands {"append-replied-to"    #'append-replied-to-command
-                  "fill-statuses"        #'fill-statuses-command
-                  "fill-users-timelines" #'fill-users-timelines-command
-                  "reply-tree"           #'reply-tree-command
-                  "stream"               #'stream-command
-                  "verify"               #'verify-command}
-        {:keys [options arguments summary errors] :as opts} (parse-opts argv option-specs)
+  (let [{:keys [options arguments summary errors] :as opts} (parse-opts argv cli-option-specs)
         [command & args] arguments
-        command-fn (get commands command)]
+        command-fn (get cli-commands command)]
     ; dispatch fatal errors
     (cond
       (:help options)    (cli-error! summary)
