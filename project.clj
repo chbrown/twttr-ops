@@ -18,7 +18,7 @@
                  [byte-transforms "0.1.4" ]]
   :exclusions [org.clojure/data.json]
   :main twttr.cli
-  :jvm-opts ["-XX:-UseGCOverheadLimit" "-Xmx3g"]
+  :jvm-opts ["-XX:-UseGCOverheadLimit" "-Xmx4g"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/tools.namespace "0.3.0-alpha3"]
                                   [org.clojure/tools.trace "0.7.9"]]
