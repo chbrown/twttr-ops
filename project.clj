@@ -18,6 +18,10 @@
                  [byte-transforms "0.1.4" ]]
   :exclusions [org.clojure/data.json]
   :main twttr.cli
+  ; -XX:-UseGCOverheadLimit prevents throwing an OutOfMemoryError if too much
+  ; time is spent doing garbage collection; see https://bit.ly/GCOverheadLimit
+  ; -XX:+UseConcMarkSweepGC enables the concurrent garbage collector
+  ; -Xmx4g sets the maximum (memory) heap footprint to 4 gigabytes
   :jvm-opts ["-XX:-UseGCOverheadLimit" "-Xmx4g"]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/tools.namespace "0.3.0-alpha3"]
