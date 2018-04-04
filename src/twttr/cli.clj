@@ -87,7 +87,9 @@
 ;; commands
 
 (defn stream-command
-  [[path & _] params]
+  "Call one of the 'stream.twitter.com' API endpoints,
+  remove empty lines, and write to *out*."
+  [[path] params]
   (log/info "streaming from" path "with params" params)
   (let [url (str "https://stream.twitter.com/1.1/" path)
         options {:request-method :get
@@ -139,7 +141,7 @@
     (run! println (pprint/format-reply-tree statuses))))
 
 (defn verify-command
-  "Run account/verify_credentials on the user credentials specified by the default environment variables"
+  "Run account/verify_credentials on the user credentials specified by the environment variables"
   [_ _]
   (let [result (api/account-verify-credentials (auth/env->UserCredentials))]
     (println (json/write-str result :escape-unicode false))))
