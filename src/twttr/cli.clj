@@ -133,6 +133,13 @@
         (log/info "Found" (- (count all-statuses) (count stored-statuses)) "new statuses for" path)
         (twttr.io/write-json-lines file all-statuses)))))
 
+(defn rate-limit-status-command
+  "Run application/rate_limit_status on the user credentials specified by the environment variables"
+  [_ {:keys [resources]}]
+  (let [params (when resources {:resources resources})
+        result (api/application-rate-limit-status (auth/env->UserCredentials) :params params)]
+    (println (json/write-str result :escape-unicode false))))
+
 (defn reply-tree-command
   "Read statuses from *in* and print out in a tree format"
   [_ {:keys [screen-name]}]
@@ -152,6 +159,7 @@
   {"append-replied-to"      #'append-replied-to-command
    "fill-statuses"          #'fill-statuses-command
    "fill-users-timelines"   #'fill-users-timelines-command
+   "rate-limit-status"      #'rate-limit-status-command
    "reply-tree"             #'reply-tree-command
    "stream"                 #'stream-command
    "verify"                 #'verify-command})
@@ -159,6 +167,7 @@
 (def cli-option-specs
   [[nil "--track TRACK"                   "Tracking search term"]
    [nil "--follow USER_IDS"               "Comma-separated user IDs to stream updates for"]
+   [nil "--resources RESOURCE1,RESOURCE2" "Resource families to check rate-limit status for"]
    [nil "--screen-name SCREEN_NAME"       "Screen name of user timeline provided on *in*"]
    [nil "--with-replied-to"]
    ["-h" "--help"]
