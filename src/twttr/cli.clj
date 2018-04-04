@@ -57,31 +57,27 @@
             (->> (apply disj stored-user-ids current-user-ids)
                  (map #(hash-map :id % :deleted now))))))
 
-(defn- fill-user-followers-from-file
-  "The file format goes from older to newer."
+(defn- update-user-operations-from-file
+  "The file format goes from older to newer; state accumulates as lines are read from top to bottom."
   [^java.io.File file]
   (let [credentials (auth/env->UserCredentials)
-        screen-name (-> (.getName file) (str/split #"\.") first)
-        stored-user-operations (twttr.io/read-json-lines file)]
-    (log/info "Read" (count stored-user-operations) "user operations for" screen-name)
-    (let [; fetch all live followers, from oldest to newest (this is a seq)
-          current-follower-ids (reverse (ops/followers credentials {:screen_name screen-name}))]
-      (log/info "Found" (count current-follower-ids) "current followers for" screen-name)
-      (let [all-user-operations (concat-new-user-operations credentials stored-user-operations current-follower-ids)]
-        (log/info "Appending" (- (count all-user-operations) (count stored-user-operations)) "new user operations for" screen-name)
-        (twttr.io/write-json-lines file all-user-operations)))))
-
-(defn- fill-user-friends-from-file
-  "The file format goes from older to newer."
-  [^java.io.File file]
-  (let [credentials (auth/env->UserCredentials)
-        screen-name (-> (.getName file) (str/split #"\.") first)
-        stored-user-operations (twttr.io/read-json-lines file)]
-    (log/info "Read" (count stored-user-operations) "user operations for" screen-name)
-    (let [current-friend-ids (reverse (ops/friends credentials {:screen_name screen-name}))]
-      (log/info "Found" (count current-friend-ids) "current friends for" screen-name)
-      (let [all-user-operations (concat-new-user-operations credentials stored-user-operations current-friend-ids)]
-        (log/info "Appending" (- (count all-user-operations) (count stored-user-operations)) "new user operations for" screen-name)
+        [screen-name op-name] (str/split (.getName file) #"\.")
+        ops-users-fn (case op-name
+                       "followers" ops/followers
+                       "friends" ops/friends)
+        ; ops-users-fn is either ops/followers or ops/friends;
+        ; i.e., an op function taking a single :screen_name or :user_id param
+        ; and returning a (lazy) seq of User IDs connected to the account specified by that param,
+        ; from newest- to oldest-made connections
+        stored-user-operations (twttr.io/read-json-lines file)
+        log-prefix (str "@" screen-name ":")]
+    (log/info log-prefix "Read" (count stored-user-operations) "user operations from file")
+    (let [; fetch all live friends/followers, from oldest to newest (this is a seq)
+          current-user-ids (reverse (ops-users-fn credentials {:screen_name screen-name}))]
+      (log/info log-prefix "Found" (count current-user-ids) "current" op-name)
+      (let [all-user-operations (concat-new-user-operations credentials stored-user-operations current-user-ids)]
+        (log/info log-prefix "Appending" (- (count all-user-operations)
+                                            (count stored-user-operations)) "new user operations")
         (twttr.io/write-json-lines file all-user-operations)))))
 
 ;; commands
@@ -112,6 +108,17 @@
       (fill-user-timeline-from-file (io/file path) with-replied-to)
       (catch Exception e
         (log/info "Failed to fill user timeline from path:" path)))))
+
+(defn update-user-operations-command
+  "Infer screen_name and friends vs. followers from the filename for each path in paths,
+  and update the user-operation history correspondingly,
+  based on the current friends/followers of the user."
+  [paths _]
+  (doseq [path paths]
+    (try
+      (update-user-operations-from-file (io/file path))
+      (catch Exception e
+        (log/info "Failed to update user operations from path:" path (str e))))))
 
 (defn fill-statuses-command
   "Read status IDs from *in*, fetch the fully-hydrated statuses, and write to *out*."
@@ -162,6 +169,7 @@
    "rate-limit-status"      #'rate-limit-status-command
    "reply-tree"             #'reply-tree-command
    "stream"                 #'stream-command
+   "update-user-operations" #'update-user-operations-command
    "verify"                 #'verify-command})
 
 (def cli-option-specs
