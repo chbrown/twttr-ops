@@ -1,5 +1,6 @@
 (ns twttr.pprint
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [twttr.io]))
 
 (defn normalize-whitespace
   "Replace each whitespace token with a normal space"
@@ -33,14 +34,30 @@
       (dissoc :id_str :in_reply_to_status_id_str :in_reply_to_user_id_str :quoted_status_id_str)
       (update :user dissoc :id_str)))
 
-;; reply-to tree formatting
-
 (defn- space [n] (str/join (repeat n " ")))
 
-(defn- format-status ; short
-  [status]
-  (normalize-whitespace
-   (str (:id status) " " "@" (:screen_name (:user status)) ": " (:text status))))
+(defn format-status
+  ([status]
+   (format-status status :medium))
+  ([status style]
+   (cond
+     ; might as well handle other stream items here
+     (contains? status :delete) (str "❌ " status)
+     (contains? status :limit) (str "🍰 " status) ; shortcake! why not?
+     :else (try
+             (let [status (normalize-status status)
+                   {:keys [id created_at text favorite_count retweet_count user]} status
+                   {:keys [screen_name]} user]
+               (case style
+                 :long   (twttr.io/write-json-str status)
+                 :medium (format "%d %20s ⟳ %4d ♡ %4d @%s: %s"
+                                 id created_at retweet_count favorite_count screen_name text)
+                 :short  (str id " " "@" screen_name ": " text)))
+             (catch Exception e
+               (println "🎇 " e (str status))
+               (throw e))))))
+
+;; reply-to tree formatting
 
 (defn- format-reply-branch
   "Iterate over statuses, returning lines in a tree format.
@@ -48,7 +65,7 @@
   ([status replies]
    (format-reply-branch status replies 0))
   ([status replies level]
-   (cons (str (space (* level 2)) (format-status status))
+   (cons (str (space (* level 2)) (format-status status :short))
          (mapcat #(format-reply-branch % replies (inc level)) (get replies (:id status))))))
 
 (defn format-reply-tree
