@@ -85,17 +85,13 @@
 (defn stream-command
   "Call one of the 'stream.twitter.com' API endpoints,
   remove empty lines, and write to *out*."
-  [[path] params]
-  (log/info "streaming from" path "with params" params)
-  (let [url (str "https://stream.twitter.com/1.1/" path)
-        options {:request-method :get
-                 ; :headers {:User-Agent "twttr"}
-                 :params params}
-        response (api/request url (auth/env->UserCredentials) options)]
-    ; (log/info "started stream" response)
-    (->> (:body response)
-         (bs/to-line-seq)
-         (remove empty?)
+  [_ params]
+  (let [api-function (if (some params #{:follow :track :locations})
+                       api/statuses-filter
+                       api/statuses-sample)]
+    (log/info "Streaming with params:" params)
+    (->> (api-function (auth/env->UserCredentials) :params params) ; :headers {:User-Agent "twttr"}
+         (map twttr.io/write-json-str)
          (interpose "\n")
          (run! #(.write *out* ^String %)))))
 
