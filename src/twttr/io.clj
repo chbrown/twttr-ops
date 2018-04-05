@@ -5,11 +5,11 @@
             [byte-streams :as bs]
             [byte-transforms :as bt]))
 
-(defn- read-json-str
+(defn read-json-str
   [string]
   (json/read-str string :key-fn keyword :eof-error? false))
 
-(defn- write-json-str
+(defn write-json-str
   [x]
   (json/write-str x :escape-unicode false :escape-js-separators false :escape-slash false))
 
