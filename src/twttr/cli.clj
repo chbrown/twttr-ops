@@ -103,7 +103,7 @@
     (try
       (fill-user-timeline-from-file (io/file path) with-replied-to)
       (catch Exception e
-        (log/info "Failed to fill user timeline from path:" path)))))
+        (log/error "Failed to fill user timeline from path:" path (str e))))))
 
 (defn update-user-operations-command
   "Infer screen_name and friends vs. followers from the filename for each path in paths,
@@ -114,7 +114,7 @@
     (try
       (update-user-operations-from-file (io/file path))
       (catch Exception e
-        (log/info "Failed to update user operations from path:" path (str e))))))
+        (log/error "Failed to update user operations from path:" path (str e))))))
 
 (defn fill-statuses-command
   "Read status IDs from *in*, fetch the fully-hydrated statuses, and write to *out*."
