@@ -11,7 +11,7 @@
                  [org.clojure/tools.logging "0.4.0"]
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [chbrown/data.json "0.2.7"]
-                 [fancy "0.1.0"]
+                 [fancy "0.2.0"]
                  [twttr "3.0.0-beta2"]
                  [manifold "0.1.6"]
                  [byte-streams "0.2.3" :exclusions [manifold]]
