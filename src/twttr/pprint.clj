@@ -29,6 +29,7 @@
       (update :text normalize-whitespace)
       (update-in [:user :name] normalize-whitespace)
       (update-in [:user :screen_name] normalize-whitespace)
+      (update-in [:extended_tweet :full_text] normalize-whitespace)
       (dissoc :contributors :geo) ; these are deprecated
       ; Clojure data.json has Longs covered:
       (dissoc :id_str :in_reply_to_status_id_str :in_reply_to_user_id_str :quoted_status_id_str)
@@ -46,7 +47,9 @@
      (contains? status :limit) (str "🍰 " status) ; shortcake! why not?
      :else (try
              (let [status (normalize-status status)
-                   {:keys [id created_at text favorite_count retweet_count user]} status
+                   ; see https://developer.twitter.com/en/docs/tweets/tweet-updates
+                   {:keys [id created_at text favorite_count retweet_count user extended_tweet]} status
+                   text (or (:full_text extended_tweet) text)
                    {:keys [screen_name]} user]
                (case style
                  :long   (twttr.io/write-json-str status)
