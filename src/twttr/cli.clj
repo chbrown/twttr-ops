@@ -23,9 +23,8 @@
   fetch new statuses for the timeline of that user,
   fetch the replied-to statuses if `with-replied-to` is true,
   then write JSON lines back to `file`"
-  [^java.io.File file with-replied-to]
-  (let [credentials (auth/env->UserCredentials)
-        screen-name (-> (.getName file) (str/split #"\.") first)
+  [credentials ^java.io.File file with-replied-to]
+  (let [screen-name (-> (.getName file) (str/split #"\.") first)
         stored-statuses (twttr.io/read-json-lines file)]
     (log/info "Read" (count stored-statuses) "stored statuses for" screen-name)
     (let [all-statuses (cond->> (ops/fill-user-timeline credentials screen-name stored-statuses)
@@ -59,9 +58,8 @@
 
 (defn- update-user-operations-from-file
   "The file format goes from older to newer; state accumulates as lines are read from top to bottom."
-  [^java.io.File file]
-  (let [credentials (auth/env->UserCredentials)
-        [screen-name op-name] (str/split (.getName file) #"\.")
+  [credentials ^java.io.File file]
+  (let [[screen-name op-name] (str/split (.getName file) #"\.")
         ops-users-fn (case op-name
                        "followers" ops/followers
                        "friends" ops/friends)
@@ -82,6 +80,9 @@
 
 ;; commands
 
+(def ^:dynamic *credentials*
+  (auth/env->UserCredentials))
+
 (defn stream-command
   "Call one of the 'stream.twitter.com' API endpoints,
   remove empty lines, and write to *out*."
@@ -90,7 +91,7 @@
                        api/statuses-filter
                        api/statuses-sample)]
     (log/info "Streaming with params:" params)
-    (->> (api-function (auth/env->UserCredentials) :params params) ; :headers {:User-Agent "twttr"}
+    (->> (api-function *credentials* :params params) ; :headers {:User-Agent "twttr"}
          (map twttr.io/write-json-str)
          (interpose "\n")
          (run! #(.write *out* ^String %)))))
@@ -101,7 +102,7 @@
   [paths {:keys [with-replied-to]}]
   (doseq [path paths]
     (try
-      (fill-user-timeline-from-file (io/file path) with-replied-to)
+      (fill-user-timeline-from-file *credentials* (io/file path) with-replied-to)
       (catch Exception e
         (log/error "Failed to fill user timeline from path:" path (str e))))))
 
@@ -112,7 +113,7 @@
   [paths _]
   (doseq [path paths]
     (try
-      (update-user-operations-from-file (io/file path))
+      (update-user-operations-from-file *credentials* (io/file path))
       (catch Exception e
         (log/error "Failed to update user operations from path:" path (str e))))))
 
@@ -121,7 +122,7 @@
   [_ _]
   (->> (io/reader *in*)
        (line-seq)
-       (ops/statuses-lookup (auth/env->UserCredentials))
+       (ops/statuses-lookup *credentials*)
        (map #(json/write-str % :escape-unicode false))
        (run! println)))
 
@@ -132,7 +133,7 @@
           :let [file (io/file path)]]
     (let [stored-statuses (twttr.io/read-json-lines file)]
       (log/info "Read" (count stored-statuses) "stored statuses from" path)
-      (let [all-statuses (ops/concat-replied-to-statuses (auth/env->UserCredentials) stored-statuses)]
+      (let [all-statuses (ops/concat-replied-to-statuses *credentials* stored-statuses)]
         (log/info "Found" (- (count all-statuses) (count stored-statuses)) "new statuses for" path)
         (twttr.io/write-json-lines file all-statuses)))))
 
@@ -140,7 +141,7 @@
   "Run application/rate_limit_status on the user credentials specified by the environment variables"
   [_ {:keys [resources]}]
   (let [params (when resources {:resources resources})
-        result (api/application-rate-limit-status (auth/env->UserCredentials) :params params)]
+        result (api/application-rate-limit-status *credentials* :params params)]
     (println (json/write-str result :escape-unicode false))))
 
 (defn reply-tree-command
@@ -153,7 +154,7 @@
 (defn verify-command
   "Run account/verify_credentials on the user credentials specified by the environment variables"
   [_ _]
-  (let [result (api/account-verify-credentials (auth/env->UserCredentials))]
+  (let [result (api/account-verify-credentials *credentials*)]
     (println (json/write-str result :escape-unicode false))))
 
 ;; CLI integration
