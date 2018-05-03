@@ -170,11 +170,11 @@
    "verify"                 #'verify-command})
 
 (def cli-option-specs
-  [[nil "--track TRACK"                   "Tracking search term"]
-   [nil "--follow USER_IDS"               "Comma-separated user IDs to stream updates for"]
-   [nil "--resources RESOURCE1,RESOURCE2" "Resource families to check rate-limit status for"]
-   [nil "--screen-name SCREEN_NAME"       "Screen name of user timeline provided on *in*"]
-   [nil "--with-replied-to"]
+  [[nil  "--track TRACK"                   "Tracking search term"]
+   [nil  "--follow USER_IDS"               "Comma-separated user IDs to stream updates for"]
+   [nil  "--resources RESOURCE1,RESOURCE2" "Resource families to check rate-limit status for"]
+   [nil  "--screen-name SCREEN_NAME"       "Screen name of user timeline provided on *in*"]
+   [nil  "--with-replied-to"]
    ["-h" "--help"]
    ["-v" "--version"]])
 
