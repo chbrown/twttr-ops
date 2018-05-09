@@ -80,8 +80,7 @@
 
 ;; commands
 
-(def ^:dynamic *credentials*
-  (auth/env->UserCredentials))
+(def ^:dynamic *credentials*)
 
 (defn stream-command
   "Call one of the 'stream.twitter.com' API endpoints,
@@ -170,7 +169,8 @@
    "verify"                 #'verify-command})
 
 (def cli-option-specs
-  [[nil  "--track TRACK"                   "Tracking search term"]
+  [["-c" "--credentials-csv CSV_FILEPATH"  "Read credentials from CSV file"]
+   [nil  "--track TRACK"                   "Tracking search term"]
    [nil  "--follow USER_IDS"               "Comma-separated user IDs to stream updates for"]
    [nil  "--resources RESOURCE1,RESOURCE2" "Resource families to check rate-limit status for"]
    [nil  "--screen-name SCREEN_NAME"       "Screen name of user timeline provided on *in*"]
@@ -208,6 +208,9 @@
       errors             (cli-error! summary (str "Argument Error: " (str/join \newline errors))))
     ; if we haven't already exited, run command
     (log/info "Calling command" (:name (meta command-fn)) "with args" args "and options" options)
-    (command-fn args options)
+    (binding [*credentials* (if-let [credentials-csv (:credentials-csv options)]
+                              (-> credentials-csv auth/file->Credentials-coll auth/coll->MemoryCredentials)
+                              (auth/env->UserCredentials))]
+      (command-fn args options))
     (flush) ; same as (.flush *out*)
     (shutdown-agents)))
