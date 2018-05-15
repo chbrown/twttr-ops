@@ -9,7 +9,7 @@
                               [:email "io@henrian.com"]]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/tools.cli "0.3.7"]
-                 [org.clojure/tools.logging "0.4.0"]
+                 [org.clojure/tools.logging "0.4.1"]
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [chbrown/data.json "0.2.7"]
                  [fancy "0.2.0"]
