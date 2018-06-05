@@ -125,6 +125,31 @@
        (map #(json/write-str % :escape-unicode false))
        (run! println)))
 
+(defn fill-users-command
+  "Read user IDs from *in*, fetch the fully-hydrated users, and write to *out*."
+  [_ _]
+  (let [digit-characters #{\0 \1 \2 \3 \4 \5 \6 \7 \8 \9}
+        word-characters #{\a \b \c \d \e \f \g \h \i \j \k \l \m \n \o \p \q \r \s \t \u \v \w \x \y \z
+                          \A \B \C \D \E \F \G \H \I \J \K \L \M \N \O \P \Q \R \S \T \U \V \W \X \Y \Z
+                          \0 \1 \2 \3 \4 \5 \6 \7 \8 \9 \_}
+        ; Infer the type of a plain string identifying a user
+        ; Twitter usernames cannot be longer than 15 characters,
+        ; and can only contain alphanumeric characters (letters A-Z, numbers 0-9) and underscores
+        ident-key (fn [s]
+                    (cond
+                      ; If an identifier is all digits, assume it's a user id.
+                      ; technically these could be screen names, but that's less likely.
+                      (every? digit-characters s) :user-ids
+                      ; Otherwise, if it meets the criteria for valid usernames, it's a screen name.
+                      (and (<= (count s) 15) (every? word-characters s)) :screen-names
+                      :else (throw (ex-info "Cannot infer type of user identifier" {:identifier s}))))]
+    (->> (io/reader *in*)
+         (line-seq)
+         (group-by ident-key)
+         (ops/users-lookup *credentials*)
+         (map #(json/write-str % :escape-unicode false))
+         (run! println))))
+
 (defn append-replied-to-command
   "Read statuses from each path, fetch the replied_to statuses (recursively) and write back to the same file."
   [paths _]
@@ -161,6 +186,7 @@
 (def cli-commands
   {"append-replied-to"      #'append-replied-to-command
    "fill-statuses"          #'fill-statuses-command
+   "fill-users"             #'fill-users-command
    "fill-users-timelines"   #'fill-users-timelines-command
    "rate-limit-status"      #'rate-limit-status-command
    "reply-tree"             #'reply-tree-command
