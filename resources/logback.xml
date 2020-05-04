@@ -10,7 +10,7 @@
   <logger name="io.netty.handler.ssl.OpenSsl" level="WARN" />
   <logger name="io.netty.util.internal.NativeLibraryLoader" level="WARN" />
 
-  <root level="TRACE">
+  <root level="DEBUG">
     <appender-ref ref="CONSOLE"/>
   </root>
 </configuration>
