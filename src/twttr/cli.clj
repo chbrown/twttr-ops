@@ -102,8 +102,11 @@
   (doseq [path paths]
     (try
       (fill-user-timeline-from-file *credentials* (io/file path) with-replied-to)
+      (catch clojure.lang.ExceptionInfo e
+        (log/warn "Failed to fill user timeline from path:" path (str e)))
       (catch Exception e
-        (log/error "Failed to fill user timeline from path:" path (str e))))))
+        (log/error "Unexpected exception filling user timeline from path:" path)
+        (throw e)))))
 
 (defn update-user-operations-command
   "Infer screen_name and friends vs. followers from the filename for each path in paths,
@@ -113,8 +116,11 @@
   (doseq [path paths]
     (try
       (update-user-operations-from-file *credentials* (io/file path))
+      (catch clojure.lang.ExceptionInfo e
+        (log/warn "Failed to update user operations from path:" path (str e)))
       (catch Exception e
-        (log/error "Failed to update user operations from path:" path (str e))))))
+        (log/error "Unexpected exception updating user operations from path:" path)
+        (throw e)))))
 
 (defn fill-statuses-command
   "Read status IDs from *in*, fetch the fully-hydrated statuses, and write to *out*."
