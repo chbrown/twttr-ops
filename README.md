@@ -9,4 +9,5 @@ Not yet organized in any stable way, much less published to Clojars, but the fun
 
 ## License
 
-Copyright © 2017 Christopher Brown. [Eclipse Public License](https://chbrown.github.io/licenses/EPL/).
+Copyright © 2017–2020 Christopher Brown.
+[Eclipse Public License](https://chbrown.github.io/licenses/EPL/).
